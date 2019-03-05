@@ -42,25 +42,24 @@ type SafeConfig struct {
 	C *Config
 }
 
-func (sc *SafeConfig) ReloadConfig(confFile string) (err error) {
-	var c = &Config{}
-	defer func() {
-		if err != nil {
-			configReloadSuccess.Set(0)
-		} else {
-			configReloadSuccess.Set(1)
-			configReloadSeconds.SetToCurrentTime()
-		}
-	}()
-
+func (sc *SafeConfig) ReloadConfigFromFile(confFile string) (err error) {
 	yamlFile, err := ioutil.ReadFile(confFile)
 	if err != nil {
+		configReloadSuccess.Set(0)
 		return fmt.Errorf("error reading config file: %s", err)
 	}
+	return sc.ReloadConfig(yamlFile)
+}
 
-	if err := yaml.UnmarshalStrict(yamlFile, c); err != nil {
+func (sc *SafeConfig) ReloadConfig(in []byte) error {
+	var c = &Config{}
+	if err := yaml.UnmarshalStrict(in, c); err != nil {
+		configReloadSuccess.Set(0)
 		return fmt.Errorf("error parsing config file: %s", err)
 	}
+
+	configReloadSuccess.Set(1)
+	configReloadSeconds.SetToCurrentTime()
 
 	sc.Lock()
 	sc.C = c
